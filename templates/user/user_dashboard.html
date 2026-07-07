@@ -1,0 +1,71 @@
+{{template "header.html" .}}
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <h5 class="fw-bold mb-3"><i class="bi bi-search"></i> Filter Dokumen</h5>
+        <form method="GET" action="/user/dashboard" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label small">Bulan</label>
+                <select name="bulan" class="form-select">
+                    <option value="">Semua Bulan</option>
+                    {{range $i := monthsList}}
+                    <option value="{{$i}}" {{if eq $.filterBulan $i}}selected{{end}}>{{$i}}</option>
+                    {{end}}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small">Tahun</label>
+                <select name="tahun" class="form-select">
+                    <option value="">Semua Tahun</option>
+                    {{range .years}}
+                    <option value="{{.}}" {{if eq $.filterTahun .}}selected{{end}}>{{.}}</option>
+                    {{end}}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-funnel"></i> Filter</button>
+                <a href="/user/dashboard" class="btn btn-outline-secondary">Reset</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white py-3">
+        <h5 class="mb-0 fw-bold"><i class="bi bi-folder"></i> Dokumen e-Bupot Saya</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th width="60">No</th>
+                        <th>Bulan</th>
+                        <th>Tahun</th>
+                        <th>Nama File</th>
+                        <th class="text-end">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range $i, $eb := .ebupots}}
+                    <tr>
+                        <td>{{add1 $i}}</td>
+                        <td>{{monthName $eb.Bulan}}</td>
+                        <td>{{$eb.Tahun}}</td>
+                        <td><i class="bi bi-file-earmark-pdf text-danger"></i> {{$eb.FileName}}</td>
+                        <td class="text-end">
+                            <a href="/user/ebupots/download/{{$eb.ID}}" class="btn btn-sm btn-success">
+                                <i class="bi bi-download"></i> Download
+                            </a>
+                        </td>
+                    </tr>
+                    {{else}}
+                    <tr><td colspan="5" class="text-center text-muted py-4">Belum ada dokumen untuk Anda.</td></tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{{template "footer.html" .}}

@@ -1,0 +1,78 @@
+{{template "header.html" .}}
+
+{{if .error}}
+<div class="alert alert-danger alert-dismissible fade show" role="alert">
+    <i class="bi bi-exclamation-circle"></i> {{.error}}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{{end}}
+{{if .success}}
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+    <i class="bi bi-check-circle"></i> {{.success}}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{{end}}
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-image"></i> Logo QR Code</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Unggah logo (PNG/JPG/GIF, maks. 2MB) yang akan ditempatkan di tengah setiap QR Code e-Bupot. Gunakan gambar persegi untuk hasil terbaik.</p>
+                <form action="/admin/settings/logo" method="POST" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label class="form-label">File Logo</label>
+                        <input type="file" name="logo" class="form-control" accept="image/png,image/jpeg,image/gif" required>
+                        <small class="text-muted">Disarankan resolusi minimal 200x200 px, latar transparan (PNG).</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-upload"></i> Upload Logo</button>
+                </form>
+
+                {{if .hasLogo}}
+                <hr>
+                <form action="/admin/settings/logo/delete" method="POST" class="d-inline" onsubmit="return confirm('Hapus logo yang tersimpan?')">
+                    <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i> Hapus Logo</button>
+                </form>
+                {{end}}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-eye"></i> Pratinjau Logo</h5>
+            </div>
+            <div class="card-body text-center">
+                {{if .hasLogo}}
+                <img src="/admin/settings/logo/preview" alt="Logo" class="img-fluid rounded border" style="max-height: 240px;">
+                <p class="text-success mt-2 mb-0"><i class="bi bi-check-circle-fill"></i> Logo aktif</p>
+                {{else}}
+                <div class="py-5 text-muted">
+                    <i class="bi bi-image" style="font-size: 4rem;"></i>
+                    <p class="mt-2 mb-0">Belum ada logo. QR Code akan tampil tanpa logo di tengah.</p>
+                </div>
+                {{end}}
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm mt-3 bg-light">
+            <div class="card-body">
+                <h6 class="fw-bold"><i class="bi bi-info-circle"></i> Informasi Format Nama File</h6>
+                <p class="small text-muted mb-0">Saat upload, nama file otomatis dibuat dengan format:</p>
+                <code class="d-block mt-2 p-2 bg-white rounded">M_01-DOC002_Ebupot_2126_BPA1_25087FU42.pdf</code>
+                <ul class="small text-muted mt-2 mb-0">
+                    <li><b>M_01</b> &rarr; ID User (2 digit)</li>
+                    <li><b>DOC002</b> &rarr; Nomor dokumen user (3 digit)</li>
+                    <li><b>2126</b> &rarr; tanggal + bulan + tahun (2 digit)</li>
+                    <li><b>BPA1</b> &rarr; kode tetap</li>
+                    <li><b>25087FU42</b> &rarr; 9 karakter random</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{template "footer.html" .}}

@@ -1,0 +1,43 @@
+# Binary / build output
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+ebupot-app
+ebupot-app.exe
+
+# Test / binary artifacts
+*.test
+*.out
+
+# Dependency directories (Go modules are tracked via go.mod/go.sum)
+
+# Runtime data — database & uploaded files (jangan di-commit)
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+uploads/ebupots/*
+!uploads/ebupots/.gitkeep
+uploads/logo.png
+uploads/_logo_tmp
+
+# Environment / secrets
+.env
+.env.local
+*.pem
+*.key
+
+# Editor / OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
