@@ -15,18 +15,12 @@ func DirectDownloadHandler(c *gin.Context) {
 
 	var ebupot models.Ebupot
 	if err := config.DB.Where("uuid_link = ?", uuidParam).First(&ebupot).Error; err != nil {
-		c.HTML(404, "error.html", gin.H{
-			"title":   "Dokumen Tidak Ditemukan",
-			"message": "Dokumen tidak ditemukan atau sudah tidak berlaku.",
-		})
+		c.HTML(404, "404.html", nil)
 		return
 	}
 
 	if _, err := os.Stat(ebupot.FilePath); os.IsNotExist(err) {
-		c.HTML(404, "error.html", gin.H{
-			"title":   "File Tidak Ditemukan",
-			"message": "Dokumen tidak ditemukan atau sudah tidak berlaku.",
-		})
+		c.HTML(404, "404.html", nil)
 		return
 	}
 

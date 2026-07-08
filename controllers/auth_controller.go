@@ -9,20 +9,24 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func ShowLandingPage(c *gin.Context) {
-	c.HTML(200, "landing.html", gin.H{
-		"title": "e-Bupot Portal",
-	})
-}
-
 func ShowLogin(c *gin.Context) {
 	errorMsg := c.Query("error")
 	successMsg := c.Query("success")
 	c.HTML(200, "login.html", gin.H{
-		"title":   "Login",
+		"title":   "e-Bupot Portal",
 		"error":   errorMsg,
 		"success": successMsg,
 	})
+}
+
+// RedirectToLogin mengalihkan root ke halaman login.
+func RedirectToLogin(c *gin.Context) {
+	c.Redirect(302, "/login")
+}
+
+// NotFound menampilkan halaman 404 untuk rute yang tidak dikenal.
+func NotFound(c *gin.Context) {
+	c.HTML(404, "404.html", nil)
 }
 
 func ProcessLogin(c *gin.Context) {

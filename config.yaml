@@ -18,7 +18,7 @@ database:
   path: "data/ebupot.db"
 
 upload:
-  max_size_mb: 5              # batas ukuran upload PDF (MB)
+  max_size_mb: 100            # batas ukuran upload PDF (MB)
   dir: "uploads/ebupots"      # folder penyimpanan PDF
   logo_path: "uploads/logo.png"
 

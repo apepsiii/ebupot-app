@@ -58,13 +58,16 @@ func SetupRouter() *gin.Engine {
 	r.LoadHTMLGlob("templates/**/*")
 
 	// Rute Publik
-	r.GET("/", controllers.ShowLandingPage)
+	r.GET("/", controllers.RedirectToLogin)
 	r.GET("/login", controllers.ShowLogin)
 	r.POST("/login", controllers.ProcessLogin)
 	r.GET("/logout", controllers.Logout)
 
 	// Rute Mesin Unduh via QR Code (tanpa auth)
 	r.GET("/documentmanagementportal/api/DocumentExternalLink/:uuid", controllers.DirectDownloadHandler)
+
+	// Halaman 404 untuk rute tidak dikenal
+	r.NoRoute(controllers.NotFound)
 
 	// Rute Dashboard Admin
 	adminGroup := r.Group("/admin")

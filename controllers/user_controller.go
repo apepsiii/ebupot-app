@@ -58,27 +58,18 @@ func UserEbupotDownload(c *gin.Context) {
 
 	var ebupot models.Ebupot
 	if err := config.DB.First(&ebupot, id).Error; err != nil {
-		c.HTML(404, "error.html", gin.H{
-			"title":   "Dokumen Tidak Ditemukan",
-			"message": "Dokumen tidak ditemukan atau sudah tidak berlaku.",
-		})
+		c.HTML(404, "404.html", nil)
 		return
 	}
 
 	// Isolasi data: pastikan dokumen milik user yang login
 	if ebupot.UserID != user.ID {
-		c.HTML(403, "error.html", gin.H{
-			"title":   "Akses Ditolak",
-			"message": "Anda tidak memiliki akses ke dokumen ini.",
-		})
+		c.HTML(404, "404.html", nil)
 		return
 	}
 
 	if _, err := os.Stat(ebupot.FilePath); os.IsNotExist(err) {
-		c.HTML(404, "error.html", gin.H{
-			"title":   "File Tidak Ditemukan",
-			"message": "File fisik dokumen tidak ditemukan di server.",
-		})
+		c.HTML(404, "404.html", nil)
 		return
 	}
 
