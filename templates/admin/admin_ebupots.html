@@ -45,6 +45,10 @@
                             <a href="/admin/ebupots/qr/{{$eb.UUIDLink}}" target="_blank" class="btn btn-sm btn-outline-primary" title="Generate QR">
                                 <i class="bi bi-qr-code"></i>
                             </a>
+                            <button class="btn btn-sm btn-outline-info" title="Share Link"
+                                onclick='shareLink("{{$.baseURL}}/documentmanagementportal/api/DocumentExternalLink/{{$eb.UUIDLink}}")'>
+                                <i class="bi bi-share"></i>
+                            </button>
                             <a href="/admin/ebupots/download/{{$eb.ID}}" class="btn btn-sm btn-outline-success" title="Download">
                                 <i class="bi bi-download"></i>
                             </a>
@@ -154,6 +158,32 @@
                     <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Simpan</button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Share Link -->
+<div class="modal fade" id="modalShare" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-link-45deg"></i> Share Link Dokumen</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small">Bagikan tautan ini ke klien. Penerima dapat langsung mengunduh file PDF tanpa login.</p>
+                <div class="input-group">
+                    <input type="text" id="shareUrlInput" class="form-control" readonly>
+                    <button class="btn btn-outline-primary" type="button" id="btnCopyLink" onclick="copyShareLink()">
+                        <i class="bi bi-clipboard"></i> Copy
+                    </button>
+                </div>
+                <div id="copyStatus" class="mt-2"></div>
+            </div>
+            <div class="modal-footer">
+                <a href="#" id="shareOpenLink" target="_blank" class="btn btn-success"><i class="bi bi-box-arrow-up-right"></i> Buka Link</a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+            </div>
         </div>
     </div>
 </div>

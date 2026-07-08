@@ -193,6 +193,7 @@ func AdminEbupots(c *gin.Context) {
 		"active":      "ebupots",
 		"ebupots":     ebupots,
 		"users":       users,
+		"baseURL":     getBaseURL(c),
 		"currentUser": c.MustGet("currentUser").(*models.User),
 	})
 }

@@ -38,3 +38,30 @@ function editEbupot(id, userId, bulan, tahun) {
     document.getElementById("editBulan").value = bulan;
     document.getElementById("editTahun").value = tahun;
 }
+
+function shareLink(url) {
+    var input = document.getElementById("shareUrlInput");
+    input.value = url;
+    document.getElementById("shareOpenLink").href = url;
+    document.getElementById("copyStatus").innerHTML = "";
+    var modal = new bootstrap.Modal(document.getElementById("modalShare"));
+    modal.show();
+}
+
+function copyShareLink() {
+    var input = document.getElementById("shareUrlInput");
+    var status = document.getElementById("copyStatus");
+    input.select();
+    input.setSelectionRange(0, 99999);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(input.value).then(function () {
+            status.innerHTML = '<span class="text-success"><i class="bi bi-check-circle-fill"></i> Link berhasil disalin!</span>';
+        }).catch(function () {
+            document.execCommand("copy");
+            status.innerHTML = '<span class="text-success"><i class="bi bi-check-circle-fill"></i> Link berhasil disalin!</span>';
+        });
+    } else {
+        document.execCommand("copy");
+        status.innerHTML = '<span class="text-success"><i class="bi bi-check-circle-fill"></i> Link berhasil disalin!</span>';
+    }
+}
