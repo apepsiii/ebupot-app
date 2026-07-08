@@ -12,10 +12,19 @@ import (
 	"os"
 	"time"
 
+	"ebupot-app/config"
+
 	xdraw "golang.org/x/image/draw"
 )
 
-const logoPath = "uploads/logo.png"
+const defaultLogoPath = "uploads/logo.png"
+
+func logoPath() string {
+	if config.Cfg != nil && config.Cfg.Upload.LogoPath != "" {
+		return config.Cfg.Upload.LogoPath
+	}
+	return defaultLogoPath
+}
 
 const alphanumericSet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
@@ -52,7 +61,7 @@ func generateEbupotFileName(userID uint, docNumber int, bulan, tahun int) string
 
 // logoExists memeriksa apakah file logo sudah diunggah.
 func logoExists() bool {
-	if _, err := os.Stat(logoPath); err == nil {
+	if _, err := os.Stat(logoPath()); err == nil {
 		return true
 	}
 	return false
@@ -70,7 +79,7 @@ func overlayLogoOnQR(qrPNG []byte) []byte {
 		return qrPNG
 	}
 
-	logoFile, err := os.Open(logoPath)
+	logoFile, err := os.Open(logoPath())
 	if err != nil {
 		return qrPNG
 	}

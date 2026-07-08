@@ -21,7 +21,14 @@ import (
 	"gorm.io/gorm"
 )
 
-const maxUploadSize = 5 << 20 // 5 MB
+const maxUploadSize = 5 << 20 // 5 MB (default; override via config saat runtime)
+
+func configuredMaxUploadSize() int64 {
+	if config.Cfg != nil && config.Cfg.Upload.MaxSizeMB > 0 {
+		return int64(config.Cfg.Upload.MaxSizeMB) << 20
+	}
+	return maxUploadSize
+}
 
 func AdminDashboard(c *gin.Context) {
 	var userCount, ebupotCount int64
@@ -191,7 +198,8 @@ func AdminEbupots(c *gin.Context) {
 }
 
 func AdminEbupotCreate(c *gin.Context) {
-	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxUploadSize)
+	maxSize := configuredMaxUploadSize()
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxSize)
 
 	userIDStr := c.PostForm("user_id")
 	bulanStr := c.PostForm("bulan")
@@ -241,8 +249,8 @@ func AdminEbupotCreate(c *gin.Context) {
 	}
 
 	// Validasi ukuran
-	if file.Size > maxUploadSize {
-		c.Redirect(302, "/admin/ebupots?error=Ukuran+file+maksimal+5MB")
+	if file.Size > maxSize {
+		c.Redirect(302, "/admin/ebupots?error=Ukuran+file+maksimal+"+strconv.Itoa(config.Cfg.Upload.MaxSizeMB)+"MB")
 		return
 	}
 
@@ -257,6 +265,9 @@ func AdminEbupotCreate(c *gin.Context) {
 	customName := generateEbupotFileName(uint(userID), docNumber, bulan, tahun)
 	storedName := newUUID + "_" + customName
 	uploadDir := "uploads/ebupots"
+	if config.Cfg != nil && config.Cfg.Upload.Dir != "" {
+		uploadDir = config.Cfg.Upload.Dir
+	}
 	if err := os.MkdirAll(uploadDir, 0755); err != nil {
 		c.Redirect(302, "/admin/ebupots?error=Gagal+membuat+folder+upload")
 		return
@@ -357,9 +368,13 @@ func AdminEbupotQR(c *gin.Context) {
 	baseURL := getBaseURL(c)
 	downloadURL := fmt.Sprintf("%s/documentmanagementportal/api/DocumentExternalLink/%s", baseURL, ebupot.UUIDLink)
 
-	// Gunakan High error correction agar QR tetap terbaca meski ada logo di tengah
-	recoveryLevel := qrcode.High
-	pngData, err := qrcode.Encode(downloadURL, recoveryLevel, 512)
+	// Recovery level & ukuran dari config (high disarankan bila pakai logo)
+	recoveryLevel := qrRecoveryLevel()
+	qrSize := 512
+	if config.Cfg != nil && config.Cfg.QR.Size > 0 {
+		qrSize = config.Cfg.QR.Size
+	}
+	pngData, err := qrcode.Encode(downloadURL, recoveryLevel, qrSize)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Gagal generate QR Code"})
 		return
@@ -373,7 +388,30 @@ func AdminEbupotQR(c *gin.Context) {
 	c.Data(200, "image/png", pngData)
 }
 
+// qrRecoveryLevel mengembalikan level koreksi error dari config.
+func qrRecoveryLevel() qrcode.RecoveryLevel {
+	lvl := "high"
+	if config.Cfg != nil && config.Cfg.QR.RecoveryLevel != "" {
+		lvl = strings.ToLower(config.Cfg.QR.RecoveryLevel)
+	}
+	switch lvl {
+	case "low":
+		return qrcode.Low
+	case "medium":
+		return qrcode.Medium
+	case "highest":
+		return qrcode.Highest
+	default:
+		return qrcode.High
+	}
+}
+
 func getBaseURL(c *gin.Context) string {
+	// Gunakan domain dari config (utama) agar URL QR stabil & konsisten
+	if config.Cfg != nil && config.Cfg.Server.Domain != "" {
+		return config.Cfg.BaseURL()
+	}
+	// Fallback: deteksi dari request
 	scheme := "http"
 	if c.Request.TLS != nil {
 		scheme = "https"
@@ -484,7 +522,7 @@ func AdminSettingsUploadLogo(c *gin.Context) {
 		return
 	}
 
-	out, err := os.Create(logoPath)
+	out, err := os.Create(logoPath())
 	if err != nil {
 		os.Remove(tmpPath)
 		c.Redirect(302, "/admin/settings?error=Gagal+menyimpan+logo")
@@ -494,7 +532,7 @@ func AdminSettingsUploadLogo(c *gin.Context) {
 
 	if err := png.Encode(out, img); err != nil {
 		os.Remove(tmpPath)
-		os.Remove(logoPath)
+		os.Remove(logoPath())
 		c.Redirect(302, "/admin/settings?error=Gagal+memproses+logo")
 		return
 	}
@@ -510,13 +548,13 @@ func AdminSettingsLogoPreview(c *gin.Context) {
 		return
 	}
 	c.Header("Content-Type", "image/png")
-	c.File(logoPath)
+	c.File(logoPath())
 }
 
 // AdminSettingsDeleteLogo menghapus logo yang tersimpan.
 func AdminSettingsDeleteLogo(c *gin.Context) {
 	if logoExists() {
-		os.Remove(logoPath)
+		os.Remove(logoPath())
 	}
 	c.Redirect(302, "/admin/settings?success=Logo+berhasil+dihapus")
 }

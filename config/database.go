@@ -13,7 +13,12 @@ import (
 var DB *gorm.DB
 
 func ConnectDatabase() {
-	database, err := gorm.Open(sqlite.Open("data/ebupot.db"), &gorm.Config{})
+	dbPath := "data/ebupot.db"
+	if Cfg != nil && Cfg.Database.Path != "" {
+		dbPath = Cfg.Database.Path
+	}
+
+	database, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
 	if err != nil {
 		log.Fatal("Gagal koneksi ke database SQLite: ", err)
 	}

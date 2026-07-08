@@ -9,7 +9,7 @@
                 <select name="bulan" class="form-select">
                     <option value="">Semua Bulan</option>
                     {{range $i := monthsList}}
-                    <option value="{{$i}}" {{if eq $.filterBulan $i}}selected{{end}}>{{$i}}</option>
+                    <option value="{{$i}}" {{if eq $.filterBulan $i}}selected{{end}}>{{monthName $i}}</option>
                     {{end}}
                 </select>
             </div>

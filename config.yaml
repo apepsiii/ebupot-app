@@ -1,0 +1,31 @@
+# ============================================================
+#  Konfigurasi Aplikasi e-Bupot Portal
+#  Nilai di sini adalah default. Override via .env / environment.
+# ============================================================
+
+app:
+  name: "e-Bupot Portal"
+  env: "development"          # development | production
+
+server:
+  host: "0.0.0.0"             # "0.0.0.0" untuk akses publik, "127.0.0.1" lokal saja
+  port: "8080"                # port aplikasi
+  domain: "localhost:8080"    # domain publik untuk URL QR Code (tanpa http://)
+  read_timeout: 10            # detik
+  write_timeout: 30           # detik
+
+database:
+  path: "data/ebupot.db"
+
+upload:
+  max_size_mb: 5              # batas ukuran upload PDF (MB)
+  dir: "uploads/ebupots"      # folder penyimpanan PDF
+  logo_path: "uploads/logo.png"
+
+qr:
+  recovery_level: "high"      # low | medium | high | highest (high disarankan bila pakai logo)
+  size: 512                   # ukuran gambar QR (px)
+
+session:
+  secret: "change-this-in-env-to-a-long-random-string"
+  max_age: 86400              # detik (24 jam)

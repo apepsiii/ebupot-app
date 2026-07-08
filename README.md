@@ -52,7 +52,8 @@ https://[DOMAIN_ANDA]/documentmanagementportal/api/DocumentExternalLink/{UUID}
 
 ```
 ebupot-app/
-├── config/              # Koneksi & migrasi database SQLite
+├── config/              # Konfigurasi & koneksi database
+│   ├── config.go        # Loader config.yaml + .env
 │   └── database.go
 ├── controllers/         # Logika (auth, admin, user, download, helpers)
 │   ├── auth_controller.go
@@ -72,6 +73,9 @@ ebupot-app/
 ├── uploads/             # Penyimpanan PDF & logo (TERPROTEKSI)
 │   └── ebupots/
 ├── data/                # File database SQLite
+├── config.yaml          # Pengaturan aplikasi (default)
+├── .env.example         # Template environment variables
+├── .env                 # Override & secrets (TIDAK di-commit)
 ├── main.go
 ├── go.mod
 └── go.sum
@@ -101,13 +105,62 @@ cd ebupot-app
 go mod download
 ```
 
-### 3. Jalankan aplikasi
+### 3. Konfigurasi
+
+Aplikasi membaca pengaturan dari dua sumber (`.env` meng-override `config.yaml`):
+
+**a. `config.yaml`** (sudah ada, berisi default non-rahasia):
+
+```yaml
+app:
+  name: "e-Bupot Portal"
+  env: "development"          # development | production
+server:
+  host: "0.0.0.0"
+  port: "8080"
+  domain: "localhost:8080"    # domain publik untuk URL QR Code
+database:
+  path: "data/ebupot.db"
+upload:
+  max_size_mb: 5
+  dir: "uploads/ebupots"
+  logo_path: "uploads/logo.png"
+qr:
+  recovery_level: "high"      # low | medium | high | highest
+  size: 512
+session:
+  secret: "change-this-in-env-to-a-long-random-string"
+  max_age: 86400
+```
+
+**b. `.env`** (rahasia/override, **jangan di-commit**):
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` terutama `SESSION_SECRET` dan `SERVER_DOMAIN`:
+
+| Env Var | Default | Keterangan |
+|---------|---------|------------|
+| `APP_ENV` | `development` | `production` untuk nonaktifkan debug |
+| `SERVER_HOST` | `0.0.0.0` | `127.0.0.1` untuk lokal saja |
+| `SERVER_PORT` | `8080` | Port aplikasi |
+| `SERVER_DOMAIN` | `localhost:8080` | Domain publik untuk URL QR (tanpa http) |
+| `DB_PATH` | `data/ebupot.db` | Lokasi file SQLite |
+| `UPLOAD_MAX_SIZE_MB` | `5` | Batas ukuran upload PDF |
+| `QR_RECOVERY_LEVEL` | `high` | Level koreksi error QR |
+| `QR_SIZE` | `512` | Ukuran gambar QR (px) |
+| `SESSION_SECRET` | *(default)* | **WAJIB ganti** di production |
+| `SESSION_MAX_AGE` | `86400` | Umur sesi (detik) |
+
+### 4. Jalankan aplikasi
 
 ```bash
 go run main.go
 ```
 
-Aplikasi berjalan di `http://localhost:8080`.
+Aplikasi berjalan di `http://localhost:8080` (sesuai `SERVER_PORT`).
 
 ### 4. Login default
 
@@ -147,10 +200,12 @@ Akun admin otomatis dibuat pada first run:
 
 ### Mengganti Secret Key Session
 
-Edit `routes/routes.go`:
+Set di file `.env`:
 
-```go
-store := cookie.NewStore([]byte("GANTI-DENGAN-KEY-RANDOM-YANG-PANJANG"))
+```bash
+SESSION_SECRET=string-random-yang-sangat-panjang-dan-unik
+APP_ENV=production
+SERVER_DOMAIN=ebupot.domainanda.com
 ```
 
 ### Deployment (VPS)

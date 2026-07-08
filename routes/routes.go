@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"ebupot-app/config"
 	"ebupot-app/controllers"
 	"ebupot-app/middlewares"
 	"html/template"
@@ -33,16 +34,22 @@ func setupFuncMap(r *gin.Engine) {
 }
 
 func SetupRouter() *gin.Engine {
+	cfg := config.Cfg
+	if cfg.IsProduction() {
+		gin.SetMode(gin.ReleaseMode)
+	}
+
 	r := gin.Default()
 
 	setupFuncMap(r)
 
-	// Session store (cookie-based)
-	store := cookie.NewStore([]byte("ebupot-secret-key-change-in-production"))
+	// Session store (cookie-based) — secret dari config
+	store := cookie.NewStore([]byte(cfg.Session.Secret))
 	store.Options(sessions.Options{
 		Path:     "/",
-		MaxAge:   86400,
+		MaxAge:   cfg.Session.MaxAge,
 		HttpOnly: true,
+		Secure:   cfg.IsProduction(),
 	})
 	r.Use(sessions.Sessions("ebupot_session", store))
 

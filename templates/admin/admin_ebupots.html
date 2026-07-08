@@ -92,7 +92,7 @@
                             <label class="form-label">Bulan</label>
                             <select name="bulan" class="form-select" required>
                                 {{range $i := monthsList}}
-                                <option value="{{$i}}">{{$i}}</option>
+                                <option value="{{$i}}">{{monthName $i}}</option>
                                 {{end}}
                             </select>
                         </div>
@@ -139,7 +139,7 @@
                             <label class="form-label">Bulan</label>
                             <select name="bulan" id="editBulan" class="form-select">
                                 {{range $i := monthsList}}
-                                <option value="{{$i}}">{{$i}}</option>
+                                <option value="{{$i}}">{{monthName $i}}</option>
                                 {{end}}
                             </select>
                         </div>
