@@ -1,0 +1,41 @@
+# ============================================================
+#  Systemd Service — e-Bupot Portal
+#  Lokasi di VPS: /etc/systemd/system/ebupot.service
+#  Aktifkan:  sudo systemctl daemon-reload
+#             sudo systemctl enable ebupot
+#             sudo systemctl start ebupot
+# ============================================================
+
+[Unit]
+Description=e-Bupot Portal & QR Generator
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+
+# Sesuaikan path instalasi
+WorkingDirectory=/opt/ebupot-app
+ExecStart=/opt/ebupot-app/ebupot-app
+
+# Environment file
+EnvironmentFile=/opt/ebupot-app/.env
+
+# Restart otomatis jika crash
+Restart=always
+RestartSec=5
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ebupot
+
+# Keamanan
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/ebupot-app/data /opt/ebupot-app/uploads
+
+[Install]
+WantedBy=multi-user.target

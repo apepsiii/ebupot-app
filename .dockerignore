@@ -1,0 +1,19 @@
+# File & folder yang tidak perlu masuk Docker image
+*.exe
+*.exe~
+data/*.db
+data/*.db-*
+uploads/ebupots/*
+!uploads/ebupots/.gitkeep
+uploads/logo.png
+uploads/_logo_tmp
+.env
+.env.*
+!.env.example
+.git
+.gitignore
+.vscode
+.idea
+CONTEXT
+*.log
+deploy

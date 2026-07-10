@@ -1,0 +1,30 @@
+# ============================================================
+#  docker-compose.yml — e-Bupot Portal
+#  Jalankan: docker compose up -d --build
+# ============================================================
+
+services:
+  ebupot:
+    build: .
+    container_name: ebupot-app
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      # Persistensi database & file upload
+      - ./data:/app/data
+      - ./uploads:/app/uploads
+      # Override config via .env (salin .env.example ke .env lalu edit)
+      - ./.env:/app/.env:ro
+    environment:
+      - APP_ENV=production
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8080
+      # GANTI domain ke domain Anda yang sebenarnya
+      - SERVER_DOMAIN=ebupot.domainanda.com
+      # GANTI secret ke string random panjang!
+      - SESSION_SECRET=ganti-dengan-secret-random-yang-panjang
+      - UPLOAD_MAX_SIZE_MB=100
+    # Untuk di belakang Nginx/Caddy proxy, uncomment baris berikut:
+    # extra_hosts:
+    #   - "host.docker.internal:host-gateway"
