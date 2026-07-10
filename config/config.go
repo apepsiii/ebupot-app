@@ -30,6 +30,7 @@ type ServerConfig struct {
 	Host         string `yaml:"host"`
 	Port         string `yaml:"port"`
 	Domain       string `yaml:"domain"`
+	Scheme       string `yaml:"scheme"`        // http | https | kosong=auto-detect dari request
 	ReadTimeout  int    `yaml:"read_timeout"`
 	WriteTimeout int    `yaml:"write_timeout"`
 }
@@ -94,6 +95,7 @@ func applyEnvOverrides(cfg *Config) {
 	envStr("SERVER_HOST", &cfg.Server.Host)
 	envStr("SERVER_PORT", &cfg.Server.Port)
 	envStr("SERVER_DOMAIN", &cfg.Server.Domain)
+	envStr("SERVER_SCHEME", &cfg.Server.Scheme)
 	envInt("SERVER_READ_TIMEOUT", &cfg.Server.ReadTimeout)
 	envInt("SERVER_WRITE_TIMEOUT", &cfg.Server.WriteTimeout)
 
@@ -136,11 +138,12 @@ func (c *Config) IsProduction() bool {
 	return strings.EqualFold(c.App.Env, "production")
 }
 
-// BaseURL mengembalikan URL dasar untuk QR Code (http/https + domain).
-func (c *Config) BaseURL() string {
-	scheme := "https"
-	if !c.IsProduction() {
-		scheme = "http"
-	}
-	return fmt.Sprintf("%s://%s", scheme, c.Server.Domain)
+// Domain mengembalikan domain publik dari config.
+func (c *Config) Domain() string {
+	return c.Server.Domain
+}
+
+// Scheme mengembalikan scheme dari config, atau string kosong jika auto-detect.
+func (c *Config) Scheme() string {
+	return c.Server.Scheme
 }

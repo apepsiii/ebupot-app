@@ -408,19 +408,28 @@ func qrRecoveryLevel() qrcode.RecoveryLevel {
 }
 
 func getBaseURL(c *gin.Context) string {
-	// Gunakan domain dari config (utama) agar URL QR stabil & konsisten
+	// Host selalu dari config (SERVER_DOMAIN) — dinamis mengikuti .env
+	domain := "localhost"
 	if config.Cfg != nil && config.Cfg.Server.Domain != "" {
-		return config.Cfg.BaseURL()
+		domain = config.Cfg.Server.Domain
 	}
-	// Fallback: deteksi dari request
-	scheme := "http"
-	if c.Request.TLS != nil {
-		scheme = "https"
+
+	// Scheme: prioritas config (SERVER_SCHEME), lalu deteksi dari request/proxy
+	scheme := ""
+	if config.Cfg != nil && config.Cfg.Server.Scheme != "" {
+		scheme = config.Cfg.Server.Scheme
 	}
-	if cf := c.GetHeader("X-Forwarded-Proto"); cf != "" {
-		scheme = cf
+	if scheme == "" {
+		scheme = "http"
+		if c.Request.TLS != nil {
+			scheme = "https"
+		}
+		if proto := c.GetHeader("X-Forwarded-Proto"); proto != "" {
+			scheme = proto
+		}
 	}
-	return fmt.Sprintf("%s://%s", scheme, c.Request.Host)
+
+	return fmt.Sprintf("%s://%s", scheme, domain)
 }
 
 func AdminEbupotDownload(c *gin.Context) {

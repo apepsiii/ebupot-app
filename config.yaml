@@ -10,7 +10,8 @@ app:
 server:
   host: "0.0.0.0"             # "0.0.0.0" untuk akses publik, "127.0.0.1" lokal saja
   port: "8080"                # port aplikasi
-  domain: "localhost:8080"    # domain publik untuk URL QR Code (tanpa http://)
+  domain: "localhost:8080"    # domain publik untuk URL QR/Share (tanpa http://)
+  scheme: ""                  # http | https | kosong=auto-detect dari request/proxy
   read_timeout: 10            # detik
   write_timeout: 30           # detik
 

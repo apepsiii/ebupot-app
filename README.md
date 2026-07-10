@@ -146,7 +146,8 @@ Edit `.env` terutama `SESSION_SECRET` dan `SERVER_DOMAIN`:
 | `APP_ENV` | `development` | `production` untuk nonaktifkan debug |
 | `SERVER_HOST` | `0.0.0.0` | `127.0.0.1` untuk lokal saja |
 | `SERVER_PORT` | `8080` | Port aplikasi |
-| `SERVER_DOMAIN` | `localhost:8080` | Domain publik untuk URL QR (tanpa http) |
+| `SERVER_DOMAIN` | `localhost:8080` | Domain publik untuk URL QR/Share (tanpa http) |
+| `SERVER_SCHEME` | *(kosong)* | `http` / `https` / kosong=auto-detect dari proxy |
 | `DB_PATH` | `data/ebupot.db` | Lokasi file SQLite |
 | `UPLOAD_MAX_SIZE_MB` | `100` | Batas ukuran upload PDF |
 | `QR_RECOVERY_LEVEL` | `high` | Level koreksi error QR |
