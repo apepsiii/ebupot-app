@@ -8,7 +8,7 @@ Deployment dengan **single binary** — semua file (templates, CSS, JS, config) 
 
 ```
 [Windows]                    [VPS]
-cross-compile  ──scp──>  upload binary
+bash build.sh  ──scp──>  upload binary
                            │
                            v
                        ./ebupot-app
@@ -26,22 +26,21 @@ cross-compile  ──scp──>  upload binary
 
 ---
 
-## 1. Cross-compile (Windows)
+## 1. Build Binary (Windows)
 
-Buka PowerShell di folder proyek:
+Buka terminal (Git Bash / PowerShell) di folder proyek:
 
-```powershell
-$env:GOOS="linux"; $env:GOARCH="amd64"; $env:CGO_ENABLED="0"
-go build -ldflags="-s -w" -o ebupot-app .
+```bash
+bash build.sh
 ```
 
-Hasil: **1 file binary** `ebupot-app` (~38MB, semua aset ter-embed).
+Hasil: **1 file binary** `ebupot-app` (~26MB, linux/amd64, semua aset ter-embed).
 
 ---
 
 ## 2. Upload ke VPS
 
-```powershell
+```bash
 # Buat folder di VPS
 ssh root@IP_VPS "mkdir -p /opt/ebupot-app"
 
@@ -165,10 +164,9 @@ sudo systemctl restart ebupot
 
 ### Update aplikasi
 
-```powershell
-# Di Windows: cross-compile ulang
-$env:GOOS="linux"; $env:GOARCH="amd64"; $env:CGO_ENABLED="0"
-go build -ldflags="-s -w" -o ebupot-app .
+```bash
+# Di Windows: build ulang
+bash build.sh
 
 # Upload binary baru (overwrite)
 scp ebupot-app root@IP_VPS:/opt/ebupot-app/
@@ -198,19 +196,28 @@ sudo systemctl restart ebupot
 
 ---
 
-## 6. Deployment Otomatis (1 perintah)
+## 6. Deployment Otomatis
+
+### Opsi A: build.sh + scp (1 perintah build)
+
+```bash
+# Build binary
+bash build.sh
+
+# Upload + set permission
+scp ebupot-app root@IP_VPS:/opt/ebupot-app/
+ssh root@IP_VPS "chmod +x /opt/ebupot-app/ebupot-app"
+```
+
+Lalu SSH ke VPS dan jalankan `./ebupot-app` untuk memulai wizard.
+
+### Opsi B: deploy.ps1 (build + upload otomatis)
 
 ```powershell
-# Di Windows
 .\deploy\deploy.ps1 -VpsHost root@IP_VPS
 ```
 
-Script ini:
-1. Cross-compile binary linux/amd64
-2. Upload ke VPS
-3. Menampilkan instruksi menjalankan wizard
-
-Lalu SSH ke VPS dan jalankan `./ebupot-app` untuk memulai wizard.
+Script ini otomatis build + upload binary, lalu menampilkan instruksi menjalankan wizard.
 
 ---
 
