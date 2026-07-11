@@ -73,9 +73,11 @@ ebupot-app/
 ├── uploads/             # Penyimpanan PDF & logo (TERPROTEKSI)
 │   └── ebupots/
 ├── data/                # File database SQLite
+├── deploy/              # File deployment (script, systemd, nginx template)
 ├── config.yaml          # Pengaturan aplikasi (default)
 ├── .env.example         # Template environment variables
 ├── .env                 # Override & secrets (TIDAK di-commit)
+├── deploy.md            # Panduan deployment lengkap
 ├── main.go
 ├── go.mod
 └── go.sum
@@ -211,188 +213,45 @@ SESSION_SECRET=string-random-yang-sangat-panjang-dan-unik
 
 ## Deployment
 
-Aplikasi membutuhkan **VPS** (bukan shared hosting) agar path URL DJP Coretax berfungsi penuh. Ada dua metode: **Docker** (termudah) atau **Binary + Systemd** (tanpa Docker).
+Aplikasi membutuhkan **VPS** (bukan shared hosting) agar path URL DJP Coretax berfungsi penuh. Deployment menggunakan **binary + systemd** (tanpa Docker).
 
-### Metode A: Docker (Direkomendasikan)
+> **Panduan lengkap ada di [`deploy.md`](deploy.md)** — step-by-step dari cross-compile hingga SSL.
 
-#### Prasyarat di VPS
-```bash
-# Install Docker & Docker Compose
-curl -fsSL https://get.docker.com | sh
-```
-
-#### Langkah部署
-
-```bash
-# 1. Clone repo ke VPS
-git clone https://github.com/apepsiii/ebupot-app.git
-cd ebupot-app
-
-# 2. Buat .env production
-cp .env.example .env
-nano .env
-#    Set: APP_ENV=production
-#         SERVER_DOMAIN=ebupot.domainanda.com
-#         SESSION_SECRET=<string-random-panjang>
-
-# 3. Build & jalankan
-docker compose up -d --build
-
-# 4. Cek status
-docker compose logs -f
-```
-
-Database & file upload tersimpan di folder `data/` dan `uploads/` (volume bind mount), aman saat container di-rebuild.
-
-```bash
-# Stop:      docker compose down
-# Rebuild:   docker compose up -d --build
-# Logs:      docker compose logs -f
-```
-
----
-
-### Metode B: Binary + Systemd (Tanpa Docker)
-
-#### 1. Cross-compile dari komputer lokal (Windows)
+### Ringkasan cepat
 
 ```powershell
+# 1. Cross-compile (Windows)
 $env:GOOS="linux"; $env:GOARCH="amd64"; $env:CGO_ENABLED="0"
 go build -ldflags="-s -w" -o ebupot-app .
-```
 
-Hasil: file binary `ebupot-app` (Linux amd64, tanpa CGO).
+# 2. Upload ke VPS
+scp -r ebupot-app templates public config.yaml .env.example user@IP:/opt/ebupot-app/
 
-#### 2. Siapkan folder di VPS
-
-```bash
-sudo mkdir -p /opt/ebupot-app
-sudo chown $USER:$USER /opt/ebupot-app
-```
-
-#### 3. Upload file ke VPS
-
-File yang **wajib** di-upload (via SCP/rsync):
-
-```
-ebupot-app          # binary
-templates/          # folder lengkap
-public/             # folder lengkap
-config.yaml         # konfigurasi default
-.env                # konfigurasi production (secrets)
-```
-
-Contoh dengan SCP:
-```bash
-# Dari komputer lokal
-scp -r ebupot-app templates public config.yaml .env user@IP_VPS:/opt/ebupot-app/
-```
-
-Atau clone langsung di VPS lalu build di sana (butuh Go terinstall):
-```bash
-git clone https://github.com/apepsiii/ebupot-app.git /opt/ebupot-app
-cd /opt/ebupot-app
-go build -ldflags="-s -w" -o ebupot-app .
-```
-
-#### 4. Buat folder data & uploads
-
-```bash
-cd /opt/ebupot-app
-mkdir -p data uploads/ebupots
-```
-
-#### 5. Setup .env production
-
-```bash
-cp .env.example .env
-nano .env
-```
-
-Isi:
-```bash
-APP_ENV=production
-SERVER_HOST=127.0.0.1          # hanya lokal, akses publik via Nginx
-SERVER_PORT=8080
-SERVER_DOMAIN=ebupot.domainanda.com
-SESSION_SECRET=ganti-dengan-secret-random-yang-panjang
-UPLOAD_MAX_SIZE_MB=100
-```
-
-#### 6. Buat systemd service
-
-```bash
-sudo cp deploy/ebupot.service /etc/systemd/system/
-sudo nano /etc/systemd/system/ebupot.service   # sesuaikan path jika perlu
-sudo systemctl daemon-reload
-sudo systemctl enable ebupot
-sudo systemctl start ebupot
-
-# Cek status
-sudo systemctl status ebupot
-sudo journalctl -u ebupot -f    # lihat log
-```
-
-#### 7. Setup Nginx + HTTPS (Let's Encrypt)
-
-```bash
-# Install Nginx & Certbot
-sudo apt install -y nginx certbot python3-certbot-nginx
-
-# Copy config Nginx
-sudo cp deploy/nginx.conf /etc/nginx/sites-available/ebupot
-sudo ln -s /etc/nginx/sites-available/ebupot /etc/nginx/sites-enabled/
-sudo nano /etc/nginx/sites-available/ebupot   # ganti ebupot.domainanda.com
-
-# Test & reload
-sudo nginx -t
-sudo systemctl reload nginx
-
-# Setup SSL gratis (Let's Encrypt)
+# 3. Setup di VPS
+ssh user@IP
+cd /opt/ebupot-app && cp .env.example .env && nano .env  # set production config
+sudo cp deploy/ebupot.service /etc/systemd/system/ && sudo systemctl enable --now ebupot
+sudo cp deploy/nginx.conf /etc/nginx/sites-available/ebupot && sudo ln -sf /etc/nginx/sites-available/ebupot /etc/nginx/sites-enabled/
 sudo certbot --nginx -d ebupot.domainanda.com
 ```
 
-File template `deploy/nginx.conf` dan `deploy/ebupot.service` sudah disediakan di repo.
+### Deployment otomatis (1 perintah)
 
----
+```powershell
+.\deploy\deploy.ps1 -VpsHost user@IP_VPS -Domain ebupot.domainanda.com
+```
 
 ### Checklist Production
 
 - [ ] `APP_ENV=production` di `.env`
 - [ ] `SESSION_SECRET` diganti (bukan default)
-- [ ] `SERVER_DOMAIN` diisi domain publik (untuk URL QR)
+- [ ] `SERVER_DOMAIN` diisi domain publik (untuk URL QR & Share Link)
 - [ ] `SERVER_HOST=127.0.0.1` (akses hanya via Nginx)
 - [ ] Nginx reverse proxy aktif dengan `X-Forwarded-Proto` header
 - [ ] SSL/HTTPS aktif (Let's Encrypt)
 - [ ] `client_max_body_size 100M` di Nginx (untuk upload 100MB)
 - [ ] Password admin default diganti
 - [ ] Backup berkala folder `data/` (database SQLite)
-
-### Backup & Restore
-
-```bash
-# Backup database & uploads
-tar -czf ebupot-backup-$(date +%Y%m%d).tar.gz data/ uploads/
-
-# Restore
-tar -xzf ebupot-backup-YYYYMMDD.tar.gz
-sudo systemctl restart ebupot
-```
-
-### Update Aplikasi
-
-```bash
-# Docker
-cd /opt/ebupot-app
-git pull
-docker compose up -d --build
-
-# Binary
-cd /opt/ebupot-app
-git pull
-go build -ldflags="-s -w" -o ebupot-app .
-sudo systemctl restart ebupot
-```
 
 ---
 
@@ -402,7 +261,7 @@ sudo systemctl restart ebupot
 
 | Method | Path | Deskripsi |
 |--------|------|-----------|
-| GET | `/` | Landing page |
+| GET | `/` | Redirect ke `/login` |
 | GET | `/login` | Halaman login |
 | POST | `/login` | Proses login |
 | GET | `/logout` | Logout |
