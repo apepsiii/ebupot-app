@@ -58,9 +58,15 @@ type SessionConfig struct {
 // Cfg adalah instance konfigurasi global.
 var Cfg *Config
 
-// Load membaca config.yaml, memuat .env, lalu meng-override nilai dari environment variables.
-func Load() *Config {
-	cfg := loadYAML("config.yaml")
+// EnvExists memeriksa apakah file .env sudah ada (first run detection).
+func EnvExists() bool {
+	_, err := os.Stat(".env")
+	return err == nil
+}
+
+// Load membaca embedded config YAML, memuat .env, lalu override dari environment.
+func Load(yamlData []byte) *Config {
+	cfg := parseYAML(yamlData)
 
 	// Muat .env jika ada (tidak fatal bila tidak ada)
 	_ = godotenv.Load()
@@ -76,15 +82,10 @@ func Load() *Config {
 	return cfg
 }
 
-func loadYAML(path string) *Config {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		log.Fatalf("Gagal membaca %s: %v (pastikan file config.yaml ada)", path, err)
-	}
-
+func parseYAML(data []byte) *Config {
 	var cfg Config
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		log.Fatalf("Gagal parse %s: %v", path, err)
+		log.Fatalf("Gagal parse config YAML: %v", err)
 	}
 	return &cfg
 }

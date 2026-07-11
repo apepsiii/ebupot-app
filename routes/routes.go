@@ -1,11 +1,17 @@
 package routes
 
 import (
+	"embed"
+	"html/template"
+	"io/fs"
+	"net/http"
+	"path/filepath"
+	"strconv"
+	"strings"
+
 	"ebupot-app/config"
 	"ebupot-app/controllers"
 	"ebupot-app/middlewares"
-	"html/template"
-	"strconv"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
@@ -17,8 +23,8 @@ var monthsID = []string{
 	"Juli", "Agustus", "September", "Oktober", "November", "Desember",
 }
 
-func setupFuncMap(r *gin.Engine) {
-	r.SetFuncMap(template.FuncMap{
+func funcMap() template.FuncMap {
+	return template.FuncMap{
 		"add1": func(i int) int { return i + 1 },
 		"monthName": func(i int) string {
 			if i >= 1 && i <= 12 {
@@ -30,18 +36,52 @@ func setupFuncMap(r *gin.Engine) {
 			return []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}
 		},
 		"itoa": strconv.Itoa,
-	})
+	}
 }
 
-func SetupRouter() *gin.Engine {
+// loadTemplatesFromEmbed mem-parse semua template HTML dari embed.FS,
+// menggunakan basename sebagai nama template (agar cocok dengan c.HTML).
+func loadTemplatesFromEmbed(templateFS embed.FS) *template.Template {
+	tmpl := template.New("").Funcs(funcMap())
+
+	var walk func(dir string)
+	walk = func(dir string) {
+		es, err := fs.ReadDir(templateFS, dir)
+		if err != nil {
+			return
+		}
+		for _, e := range es {
+			fullPath := dir + "/" + e.Name()
+			if e.IsDir() {
+				walk(fullPath)
+				continue
+			}
+			if !strings.HasSuffix(e.Name(), ".html") {
+				continue
+			}
+			data, err := templateFS.ReadFile(fullPath)
+			if err != nil {
+				panic("Gagal membaca template " + fullPath + ": " + err.Error())
+			}
+			name := filepath.Base(fullPath)
+			_, err = tmpl.New(name).Parse(string(data))
+			if err != nil {
+				panic("Gagal parse template " + name + ": " + err.Error())
+			}
+		}
+	}
+	walk("templates")
+
+	return tmpl
+}
+
+func SetupRouter(templateFS embed.FS, publicFS embed.FS) *gin.Engine {
 	cfg := config.Cfg
 	if cfg.IsProduction() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
 	r := gin.Default()
-
-	setupFuncMap(r)
 
 	// Session store (cookie-based) — secret dari config
 	store := cookie.NewStore([]byte(cfg.Session.Secret))
@@ -53,9 +93,16 @@ func SetupRouter() *gin.Engine {
 	})
 	r.Use(sessions.Sessions("ebupot_session", store))
 
-	// Static files & templates
-	r.Static("/public", "./public")
-	r.LoadHTMLGlob("templates/**/*")
+	// Templates dari embed.FS (di dalam binary, tidak perlu file di disk)
+	tmpl := loadTemplatesFromEmbed(templateFS)
+	r.SetHTMLTemplate(tmpl)
+
+	// Static assets dari embed.FS
+	publicSub, err := fs.Sub(publicFS, "public")
+	if err != nil {
+		panic("Gagal sub public FS: " + err.Error())
+	}
+	r.StaticFS("/public", http.FS(publicSub))
 
 	// Rute Publik
 	r.GET("/", controllers.RedirectToLogin)
