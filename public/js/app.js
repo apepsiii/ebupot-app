@@ -37,6 +37,7 @@ function editEbupot(id, userId, bulan, tahun) {
     document.getElementById("editUserID").value = userId;
     document.getElementById("editBulan").value = bulan;
     document.getElementById("editTahun").value = tahun;
+    document.getElementById("editFile").value = "";
 }
 
 function shareLink(url) {

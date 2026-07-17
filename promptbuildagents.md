@@ -59,14 +59,19 @@ sistem build & deployment dengan pola berikut:
   2. Tanya interaktif: port, domain, scheme, max upload, auto-generate session
      secret (openssl rand atau crypto/rand)
   3. Tulis file .env (chmod 0600)
-  4. Buat folder data/ dan uploads/
+  4. Buat folder data/, uploads/, dan logs/
   5. Jika Linux + root: tawarkan systemd, nginx, SSL (jalankan perintah via
-     exec.Command dengan sudo)
-  6. Cetak ringkasan + jalankan server
+      exec.Command dengan sudo)
+  6. Systemd setup otomatis:
+     - chown -R <service-user>:<service-user> untuk folder data/, uploads/, logs/
+       (agar service yang jalan sebagai www-data bisa menulis)
+     - copy service file, daemon-reload, enable, restart (auto-start)
+  7. Cetak ringkasan + info akses (URL, login, lokasi .env & log) + jalankan server
 - Helper functions: askInput (dengan default), askYesNo (dengan default Y/N),
   generateSecret, isRoot, runCmd (exec.Command dengan stdin/stdout/stderr).
-- Systemd: generate service file dinamis (path dari os.Executable()), copy ke
-  /etc/systemd/system/, daemon-reload, enable.
+- Systemd: generate service file dinamis (path dari os.Executable() + os.Getwd()),
+  sertakan ProtectSystem=strict, ProtectHome=true, ReadWritePaths=data/uploads/logs,
+  copy ke /etc/systemd/system/, daemon-reload, enable, restart.
 - Nginx: generate config dengan client_max_body_size, proxy_pass, X-Forwarded-Proto,
   copy ke sites-available, symlink ke sites-enabled, nginx -t, reload.
 - SSL: certbot --nginx -d domain --redirect.
@@ -75,17 +80,32 @@ sistem build & deployment dengan pola berikut:
 ```go
 func main() {
     var cfg *config.Config
-    if !config.EnvExists() {
+    firstRun := !config.EnvExists()
+    if firstRun {
         cfg = setup.RunWizard(configYAML)
     } else {
         cfg = config.Load(configYAML)
     }
-    // init database, setup router, run server
+    // Init logging (slog → stdout + file logs/app.log) SEBELUM apa pun
+    if err := config.InitLogging(cfg.Log.Dir); err != nil {
+        log.Fatalf("Gagal init logging: %v", err)
+    }
+    if firstRun {
+        printPostSetupInfo(cfg) // cetak URL akses, login, lokasi .env & log
+    }
     config.ConnectDatabase()
     r := routes.SetupRouter(templateFS, publicFS)
+    // Pesan foreground + petunjuk systemd
     r.Run(cfg.Addr())
 }
 ```
+
+#### E2. Logging (`config/logging.go`)
+- `InitLogging(logDir string) error` — buat folder `logs/`, buka `app.log`
+  (mode 0640), pakai `slog.NewJSONHandler(io.MultiWriter(os.Stdout, file), ...)`.
+- `slog.SetDefault(Logger)` agar semua `slog.Info/Error/Warn` tulis ke stdout + file.
+- Jangan log password/secret ke file.
+- Pada error fatal: gunakan `slog.Error` dulu (masuk file) lalu `log.Fatal` (stderr).
 
 #### F. Script `build.sh` (root proyek)
 ```bash
@@ -107,6 +127,17 @@ GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o ebupot-app .
 - .env TIDAK di-embed (di-generate oleh wizard, di-gitignore).
 - config.yaml di-embed sebagai default, .env override.
 - Jika user ingin reconfigure: hapus .env, jalankan ulang binary → wizard muncul lagi.
+- Logging via `log/slog` (built-in Go 1.21+) ke stdout + `logs/app.log`. Jangan
+  gunakan `log.Printf` untuk log penting karena tidak masuk file.
+- Systemd service WAJIB sertakan folder `logs/` di `ReadWritePaths` selain
+  `data/` dan `uploads/` (karena `ProtectSystem=strict` membuat FS read-only).
+- Setelah buat folder, wizard otomatis `chown -R <service-user>` agar service
+  yang jalan sebagai www-data bisa menulis — tanpa ini, service crash dengan
+  "permission denied" saat init logging / akses DB.
+- Validasi upload PDF: SELALU cek magic bytes (`%PDF`) terlepas dari Content-Type
+  header. Handle error pada `file.Open()` dan `Read()`, pastikan `n == 4`.
+- Saat edit dokumen dengan re-upload file: simpan DB dulu, hapus file lama
+  setelahnya; jangan regenerate UUID/share-link agar link lama tetap valid.
 ```
 
 ---
@@ -118,17 +149,25 @@ Gunakan checklist ini untuk memverifikasi AI agent sudah mengimplementasi dengan
 - [ ] `embed.go` ada di root dengan directive `//go:embed` untuk templates, public, config.yaml
 - [ ] `config.Load()` menerima `[]byte` (embedded YAML), bukan baca file dari disk
 - [ ] `config.EnvExists()` tersedia dan dipakai di main.go untuk deteksi first run
+- [ ] `config.InitLogging()` ada: slog → stdout + `logs/app.log` (mode 0640)
 - [ ] `routes.SetupRouter()` menerima `embed.FS` untuk templates & public
 - [ ] Templates di-parse dari embed.FS dengan `filepath.Base()` sebagai nama
 - [ ] Static assets diserve dari embed.FS via `http.FS(fs.Sub(...))`
 - [ ] `setup/wizard.go` menanyakan: port, domain, scheme, upload size, session secret
-- [ ] Wizard generate .env, buat folder, optional systemd/nginx/SSL
+- [ ] Wizard generate .env, buat folder data/uploads/logs, optional systemd/nginx/SSL
 - [ ] Wizard print pesan [OK]/[GAGAL] per langkah
+- [ ] Wizard otomatis `chown -R <service-user>` untuk data/uploads/logs
+- [ ] Systemd service file sertakan `ReadWritePaths=.../data .../uploads .../logs`
+- [ ] Systemd setup auto-restart service (bukan hanya enable)
 - [ ] `main.go` cek `EnvExists()` → wizard jika false, normal run jika true
+- [ ] `main.go` cetak info post-setup (URL, login, lokasi .env & log) saat first run
 - [ ] `build.sh` cross-compile linux/amd64 dengan CGO_ENABLED=0
 - [ ] Binary berjalan tanpa file eksternal (coba pindah ke folder kosong lalu jalankan)
 - [ ] Hapus .env → wizard muncul lagi
 - [ ] `.env` ada di `.gitignore`
+- [ ] `logs/` ada di `.gitignore` (dengan `.gitkeep`)
+- [ ] Password/secret TIDAK di-log ke file
+- [ ] Validasi upload PDF cek magic bytes terlepas dari Content-Type
 - [ ] `go build` dan `go vet ./...` lolos tanpa error
 
 ---
@@ -138,17 +177,18 @@ Gunakan checklist ini untuk memverifikasi AI agent sudah mengimplementasi dengan
 ```
 proyek-anda/
 ├── embed.go              # Directive //go:embed
-├── main.go               # Entry point + wizard flow
+├── main.go               # Entry point + wizard flow + post-setup info
 ├── build.sh              # Cross-compile script
 ├── config.yaml           # Default config (di-embed)
 ├── .env.example          # Template env (untuk referensi)
 ├── .env                  # Generated oleh wizard (gitignore)
 ├── .gitignore
 ├── config/
-│   ├── config.go         # Load embedded YAML + .env override
-│   └── database.go       # Koneksi DB dari config
+│   ├── config.go         # Load embedded YAML + .env override + LOG_DIR
+│   ├── database.go       # Koneksi DB dari config (log via slog)
+│   └── logging.go        # InitLogging: slog → stdout + logs/app.log
 ├── setup/
-│   └── wizard.go         # Setup wizard interaktif
+│   └── wizard.go         # Setup wizard + auto-chown + systemd restart
 ├── routes/
 │   └── routes.go         # SetupRouter(embed.FS, embed.FS)
 ├── controllers/
@@ -158,6 +198,7 @@ proyek-anda/
 ├── public/               # Di-embed ke binary
 ├── data/                 # Dibuat saat runtime (gitignore)
 ├── uploads/              # Dibuat saat runtime (gitignore)
+├── logs/                 # Dibuat saat runtime (gitignore, +.gitkeep)
 └── deploy/
     ├── deploy.ps1        # Upload otomatis (opsional)
     ├── ebupot.service    # Template referensi systemd
@@ -183,11 +224,11 @@ Mari kita setup aplikasi ini.
 [5] Auto-generate session secret? [Y/n]: y
 
   [OK] File .env dibuat
-  [OK] Folder data/ dibuat
-  [OK] Folder uploads/ dibuat
+  [OK] Folder data/, uploads/, logs/ dibuat
 
 Setup systemd service? [Y/n]: y
-  [OK] Systemd service terpasang
+  [OK] Systemd service terpasang & dijalankan (auto-start saat boot)
+       Status: sudo systemctl status ebupot
 
 Setup Nginx reverse proxy? [Y/n]: y
   [OK] Nginx terpasang untuk app.domainanda.com
@@ -199,7 +240,30 @@ Setup SSL (Let's Encrypt)? [y/N]: y
 |              SETUP SELESAI!                          |
 +======================================================+
 
-Server berjalan di http://localhost:8080
++======================================================+
+|              INFO APLIKASI                           |
++======================================================+
+|  Akses      : https://app.domainanda.com
+|  Login      : admin / admin123
+|  .env       : /opt/app/.env
+|  Log file   : /opt/app/logs/app.log
++======================================================+
+
+Perintah berguna:
+  Mulai service : sudo systemctl start ebupot
+  Stop service  : sudo systemctl stop ebupot
+  Status service: sudo systemctl status ebupot
+  Lihat log     : sudo journalctl -u ebupot -f
+                 tail -f logs/app.log
+
+>>> Memulai server...
+
+{"level":"INFO","msg":"Aplikasi started","app":"...","env":"production","listen":"0.0.0.0:8080"}
+{"level":"INFO","msg":"Database Connected & Migrated!"}
+{"level":"INFO","msg":"Server berjalan","url":"http://0.0.0.0:8080","domain_qr":"app.domainanda.com"}
+
+>>> Server berjalan di foreground. Tekan Ctrl+C untuk berhenti.
+>>> Untuk background: sudo systemctl start ebupot
 ```
 
 ---
@@ -208,7 +272,7 @@ Server berjalan di http://localhost:8080
 
 1. **Selalu test dengan menghapus .env** — wizard harus muncul kembali.
 2. **Test binary di folder kosong** — tidak boleh ada dependency file eksternal
-   (kecuali .env yang dibuat wizard dan folder data/uploads yang dibuat wizard).
+   (kecuali .env yang dibuat wizard dan folder data/uploads/logs yang dibuat wizard).
 3. **CGO_ENABLED=0 wajib** — gunakan driver DB pure-Go (glebarez/sqlite untuk
    SQLite, atau driver lain yang tidak butuh CGO).
 4. **Template basename** — pastikan semua `c.HTML()` dan `{{template}}`
@@ -218,3 +282,18 @@ Server berjalan di http://localhost:8080
 6. **Permission .env = 0600** — file berisi secret, tidak boleh world-readable.
 7. **Wizard skip di Windows** — systemd/nginx/SSL hanya untuk Linux. Deteksi via
    `runtime.GOOS == "linux"`.
+8. **Logging ke stdout + file** — gunakan `io.MultiWriter`. Saat jalan manual,
+   output tetap muncul di terminal; saat jalan via systemd, masuk journal + file.
+9. **ReadWritePaths systemd** — wajib sertakan `data`, `uploads`, DAN `logs`
+   karena `ProtectSystem=strict` membuat seluruh FS read-only.
+10. **Auto-chown folder** — setelah buat folder, `chown -R <service-user>` agar
+    service jalan sebagai www-data bisa menulis. Tanpa ini, service crash dengan
+    "permission denied" saat init logging / akses DB.
+11. **Auto-restart service** — wizard harus `systemctl restart` (bukan hanya
+    enable) agar service langsung jalan setelah setup.
+12. **Jangan log password** — default credential cukup dicetak di banner post-setup,
+    jangan ditulis ke `logs/app.log`.
+13. **Validasi upload aman** — cek magic bytes terlepas dari Content-Type; handle
+    error `Open()`/`Read()`; pastikan `n == 4` sebelum validasi.
+14. **Edit dengan re-upload** — simpan DB dulu, hapus file lama setelahnya; jangan
+    regenerate UUID/share-link agar link lama tetap valid.

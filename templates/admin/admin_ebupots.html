@@ -124,7 +124,7 @@
 <div class="modal fade" id="modalEdit" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form id="formEdit" method="POST" action="/admin/ebupots/update/0">
+            <form id="formEdit" method="POST" action="/admin/ebupots/update/0" enctype="multipart/form-data">
                 <div class="modal-header">
                     <h5 class="modal-title"><i class="bi bi-pencil"></i> Edit Dokumen</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -151,6 +151,11 @@
                             <label class="form-label">Tahun</label>
                             <input type="number" name="tahun" id="editTahun" class="form-control" min="1900">
                         </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Ganti Dokumen PDF (opsional)</label>
+                        <input type="file" name="file" id="editFile" class="form-control" accept=".pdf,application/pdf">
+                        <small class="text-muted">Kosongkan jika tidak ingin mengganti file. File lama akan dihapus dan diganti.</small>
                     </div>
                 </div>
                 <div class="modal-footer">

@@ -59,15 +59,13 @@ func RunWizard(yamlData []byte) *config.Config {
 	fmt.Println("  [OK] File .env dibuat")
 
 	// --- Buat folder ---
-	if err := os.MkdirAll("data", 0755); err != nil {
-		fmt.Printf("  [GAGAL] Tidak bisa buat folder data/: %v\n", err)
+	wd, _ := os.Getwd()
+	for _, dir := range []string{"data", "uploads/ebupots", "logs"} {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			fmt.Printf("  [GAGAL] Tidak bisa buat folder %s/: %v\n", dir, err)
+		}
 	}
-	fmt.Println("  [OK] Folder data/ dibuat")
-
-	if err := os.MkdirAll("uploads/ebupots", 0755); err != nil {
-		fmt.Printf("  [GAGAL] Tidak bisa buat folder uploads/: %v\n", err)
-	}
-	fmt.Println("  [OK] Folder uploads/ dibuat")
+	fmt.Println("  [OK] Folder data/, uploads/, logs/ dibuat")
 
 	// --- Setup systemd & Nginx (hanya di Linux + root) ---
 	isLinux := runtime.GOOS == "linux"
@@ -78,7 +76,7 @@ func RunWizard(yamlData []byte) *config.Config {
 
 		// Systemd
 		if askYesNo(reader, "Setup systemd service (auto-start saat boot)?", isRoot) {
-			setupSystemd(reader, port)
+			setupSystemd(reader, port, wd)
 		}
 
 		// Nginx
@@ -187,8 +185,7 @@ func askYesNo(reader *bufio.Reader, prompt string, defaultYes bool) bool {
 
 // --- Systemd setup ---
 
-func setupSystemd(reader *bufio.Reader, port string) {
-	wd, _ := os.Getwd()
+func setupSystemd(reader *bufio.Reader, port string, wd string) {
 	exePath, _ := os.Executable()
 	if exePath == "" {
 		exePath = filepath.Join(wd, "ebupot-app")
@@ -218,30 +215,40 @@ SyslogIdentifier=ebupot
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=%s/data %s/uploads
+ReadWritePaths=%s/data %s/uploads %s/logs
 
 [Install]
 WantedBy=multi-user.target
-`, currentUser, currentUser, wd, exePath, wd, wd, wd)
+`, currentUser, currentUser, wd, exePath, wd, wd, wd, wd)
 
 	tmpFile := "/tmp/ebupot.service"
 	os.WriteFile(tmpFile, []byte(serviceContent), 0644)
+
+	// Chown folder ke user service agar bisa ditulis
+	chownSteps := [][]string{
+		{"sudo", "chown", "-R", currentUser + ":" + currentUser, filepath.Join(wd, "data")},
+		{"sudo", "chown", "-R", currentUser + ":" + currentUser, filepath.Join(wd, "uploads")},
+		{"sudo", "chown", "-R", currentUser + ":" + currentUser, filepath.Join(wd, "logs")},
+	}
 
 	steps := [][]string{
 		{"sudo", "cp", tmpFile, "/etc/systemd/system/ebupot.service"},
 		{"sudo", "systemctl", "daemon-reload"},
 		{"sudo", "systemctl", "enable", "ebupot"},
+		{"sudo", "systemctl", "restart", "ebupot"},
 	}
 
-	for _, cmd := range steps {
+	allSteps := append(chownSteps, steps...)
+
+	for _, cmd := range allSteps {
 		if !runCmd(cmd[0], cmd[1:]...) {
 			fmt.Printf("  [GAGAL] Setup systemd di step: %s\n", strings.Join(cmd, " "))
 			fmt.Println("  Lakukan manual atau jalankan sebagai root/sudo")
 			return
 		}
 	}
-	fmt.Println("  [OK] Systemd service terpasang (auto-start saat boot)")
-	fmt.Println("       Mulai: sudo systemctl start ebupot")
+	fmt.Println("  [OK] Systemd service terpasang & dijalankan (auto-start saat boot)")
+	fmt.Println("       Status: sudo systemctl status ebupot")
 	fmt.Println("       Log  : sudo journalctl -u ebupot -f")
 }
 

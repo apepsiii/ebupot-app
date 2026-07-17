@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"log"
+	"log/slog"
 	"os"
 	"strconv"
 	"strings"
@@ -19,6 +20,7 @@ type Config struct {
 	Upload  UploadConfig  `yaml:"upload"`
 	QR      QRConfig      `yaml:"qr"`
 	Session SessionConfig `yaml:"session"`
+	Log     LogConfig     `yaml:"log"`
 }
 
 type AppConfig struct {
@@ -43,6 +45,10 @@ type UploadConfig struct {
 	MaxSizeMB int    `yaml:"max_size_mb"`
 	Dir       string `yaml:"dir"`
 	LogoPath  string `yaml:"logo_path"`
+}
+
+type LogConfig struct {
+	Dir string `yaml:"dir"`
 }
 
 type QRConfig struct {
@@ -76,7 +82,7 @@ func Load(yamlData []byte) *Config {
 	Cfg = cfg
 
 	if cfg.App.Env == "production" && strings.Contains(strings.ToLower(cfg.Session.Secret), "change-this") {
-		log.Println("PERINGATAN: SESSION_SECRET masih default! Wajib diatur via .env untuk production.")
+		slog.Warn("SESSION_SECRET masih default! Wajib diatur via .env untuk production.")
 	}
 
 	return cfg
@@ -111,6 +117,8 @@ func applyEnvOverrides(cfg *Config) {
 
 	envStr("SESSION_SECRET", &cfg.Session.Secret)
 	envInt("SESSION_MAX_AGE", &cfg.Session.MaxAge)
+
+	envStr("LOG_DIR", &cfg.Log.Dir)
 }
 
 // envStr meng-override pointer string bila env var ada.

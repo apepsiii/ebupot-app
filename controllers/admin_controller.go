@@ -299,6 +299,9 @@ func AdminEbupotCreate(c *gin.Context) {
 }
 
 func AdminEbupotUpdate(c *gin.Context) {
+	maxSize := configuredMaxUploadSize()
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxSize)
+
 	id := c.Param("id")
 
 	var ebupot models.Ebupot
@@ -326,6 +329,81 @@ func AdminEbupotUpdate(c *gin.Context) {
 		if t, err := strconv.Atoi(tahunStr); err == nil && t >= 1900 {
 			ebupot.Tahun = t
 		}
+	}
+
+	// Cek apakah ada file baru di-upload
+	file, err := c.FormFile("file")
+	if err == nil && file != nil && file.Size > 0 {
+		ext := strings.ToLower(filepath.Ext(file.Filename))
+		if ext != ".pdf" {
+			c.Redirect(302, "/admin/ebupots?error=Hanya+file+berformat+PDF+yang+diizinkan")
+			return
+		}
+
+		// Selalu validasi magic bytes, terlepas dari Content-Type
+		buf := make([]byte, 4)
+		f, openErr := file.Open()
+		if openErr != nil {
+			c.Redirect(302, "/admin/ebupots?error=Gagal+membaca+file")
+			return
+		}
+		n, readErr := f.Read(buf)
+		f.Close()
+		if readErr != nil || n < 4 || !(buf[0] == 0x25 && buf[1] == 0x50 && buf[2] == 0x44 && buf[3] == 0x46) {
+			c.Redirect(302, "/admin/ebupots?error=Hanya+file+berformat+PDF+yang+diizinkan")
+			return
+		}
+
+		if file.Size > maxSize {
+			c.Redirect(302, "/admin/ebupots?error=Ukuran+file+maksimal+"+strconv.Itoa(config.Cfg.Upload.MaxSizeMB)+"MB")
+			return
+		}
+
+		newUUID := uuid.New().String()
+
+		// Konsisten dengan create: docCount + 1
+		var docCount int64
+		config.DB.Model(&models.Ebupot{}).Where("user_id = ?", ebupot.UserID).Count(&docCount)
+		docNumber := int(docCount) + 1
+
+		customName := generateEbupotFileName(ebupot.UserID, docNumber, ebupot.Bulan, ebupot.Tahun)
+		storedName := newUUID + "_" + customName
+		uploadDir := "uploads/ebupots"
+		if config.Cfg != nil && config.Cfg.Upload.Dir != "" {
+			uploadDir = config.Cfg.Upload.Dir
+		}
+		if err := os.MkdirAll(uploadDir, 0755); err != nil {
+			c.Redirect(302, "/admin/ebupots?error=Gagal+membuat+folder+upload")
+			return
+		}
+		savePath := filepath.Join(uploadDir, storedName)
+
+		if err := c.SaveUploadedFile(file, savePath); err != nil {
+			c.Redirect(302, "/admin/ebupots?error=Gagal+menyimpan+file+baru")
+			return
+		}
+
+		oldFilePath := ebupot.FilePath
+
+		ebupot.FileName = customName
+		ebupot.FilePath = savePath
+		// UUIDLink tetap stabil — jangan regenerate agar QR/share link lama tetap valid
+
+		// Simpan DB dulu, baru hapus file lama
+		if err := config.DB.Save(&ebupot).Error; err != nil {
+			// DB gagal: hapus file baru, biarkan record lama utuh
+			os.Remove(savePath)
+			c.Redirect(302, "/admin/ebupots?error=Gagal+mengupdate+dokumen")
+			return
+		}
+
+		// Hapus file lama setelah DB berhasil
+		if oldFilePath != "" {
+			os.Remove(oldFilePath)
+		}
+
+		c.Redirect(302, "/admin/ebupots?success=Dokumen+berhasil+diperbarui")
+		return
 	}
 
 	if err := config.DB.Save(&ebupot).Error; err != nil {

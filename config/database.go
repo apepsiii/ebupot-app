@@ -2,6 +2,7 @@ package config
 
 import (
 	"log"
+	"log/slog"
 
 	"ebupot-app/models"
 
@@ -20,17 +21,19 @@ func ConnectDatabase() {
 
 	database, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
 	if err != nil {
+		slog.Error("Gagal koneksi ke database SQLite", "error", err)
 		log.Fatal("Gagal koneksi ke database SQLite: ", err)
 	}
 
 	err = database.AutoMigrate(&models.User{}, &models.Ebupot{})
 	if err != nil {
+		slog.Error("Gagal migrasi database", "error", err)
 		log.Fatal("Gagal migrasi database: ", err)
 	}
 
 	DB = database
 	seedAdmin()
-	log.Println("Database Connected & Migrated!")
+	slog.Info("Database Connected & Migrated!")
 }
 
 func seedAdmin() {
@@ -42,6 +45,7 @@ func seedAdmin() {
 
 	hashed, err := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
 	if err != nil {
+		slog.Error("Gagal hash password admin", "error", err)
 		log.Fatal("Gagal hash password admin: ", err)
 	}
 
@@ -53,8 +57,9 @@ func seedAdmin() {
 	}
 
 	if err := DB.Create(&admin).Error; err != nil {
+		slog.Error("Gagal membuat akun admin", "error", err)
 		log.Fatal("Gagal membuat akun admin: ", err)
 	}
 
-	log.Println("Akun admin default dibuat (username: admin, password: admin123)")
+	slog.Info("Akun admin default dibuat", "username", "admin", "note", "ganti password default segera")
 }
