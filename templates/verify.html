@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="id">
+
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Unduh Dokumen</title>
+        <link rel="icon" type="image/x-icon" href="/documentmanagementportal/api/favicon.ico" />
+        <link rel="shortcut icon" type="image/x-icon" href="/documentmanagementportal/api/favicon.ico" />
+        <link rel="stylesheet" href="/documentmanagementportal/api/css/all.min.css" />
+        <link rel="stylesheet" href="/documentmanagementportal/api/css/local-fonts.css" />
+        <link rel="stylesheet" href="/documentmanagementportal/api/css/site.min.css" />
+        <link rel="stylesheet" href="/documentmanagementportal/api/css/verify.css" />
+        <script async defer src="/documentmanagementportal/api/asset-document-verify/altcha.min.js" type="module"></script>
+
+        <style>
+            html,
+            body {
+                margin: 0;
+                padding: 0;
+                height: 100%;
+                overflow: hidden;
+            }
+
+            .coretax-verify-page {
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+            }
+
+            .coretax-content {
+                flex: 1;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+            }
+
+            .coretax-site-footer {
+                flex-shrink: 0;
+                padding: 12px 20px;
+            }
+
+            .coretax-readonly-field {
+                background: #f1f3f5;
+                color: #495057;
+                cursor: not-allowed;
+            }
+
+            .coretax-lang-switcher {
+                position: fixed;
+                top: 20px;
+                right: 24px;
+                z-index: 1000;
+            }
+
+            .coretax-lang-switcher .coretax-lang-menu {
+                position: absolute;
+                top: 100%;
+                right: 0;
+                margin-top: 8px;
+            }
+
+            .coretax-verify-heading h1 {
+                font-size: 28px;
+                line-height: 1.2;
+            }
+
+            .coretax-alert-error,
+            .coretax-alert-error span {
+                color: #dc3545;
+                font-weight: 600;
+            }
+
+            .coretax-field-group label {
+                font-size: 16px;
+                font-weight: 600;
+            }
+
+            .coretax-validation-summary {
+                display: flex;
+                gap: 12px;
+                padding: 16px;
+                margin-bottom: 20px;
+                border: 1px solid #f5c2c7;
+                border-radius: 12px;
+                background: #fdf0f1;
+            }
+
+            .coretax-validation-icon {
+                color: #dc3545;
+                font-size: 20px;
+                flex-shrink: 0;
+            }
+
+            .coretax-validation-title {
+                color: #dc3545;
+                font-weight: 700;
+                margin-bottom: 4px;
+            }
+
+            .coretax-validation-message {
+                color: #842029;
+                font-size: 14px;
+            }
+
+            .coretax-validation-message ul {
+                margin: 0;
+                padding-left: 18px;
+            }
+        </style>
+
+    </head>
+
+    <body>
+
+        <div class="coretax-verify-page">
+
+            <div class="coretax-overlay"></div>
+            <div class="coretax-lang-switcher" id="langSwitcher">
+                <button type="button" class="coretax-lang-trigger" id="langTrigger">
+                    <span class="coretax-lang-flag coretax-lang-flag-id"></span>
+                    <span class="coretax-lang-current">ID</span>
+                    <i class="fas fa-chevron-down coretax-lang-chevron"></i>
+                </button>
+                <div class="coretax-lang-menu" id="langMenu">
+                    <button type="button" class="coretax-lang-option is-active" data-lang="id" data-code="ID">
+                        <span class="coretax-lang-radio"><i class="fas fa-check"></i></span>
+                        <span class="coretax-lang-name">Indonesia</span>
+                        <span class="coretax-lang-flag coretax-lang-flag-id"></span>
+                    </button>
+                    <button type="button" class="coretax-lang-option" data-lang="en" data-code="EN">
+                        <span class="coretax-lang-radio"><i class="fas fa-check"></i></span>
+                        <span class="coretax-lang-name">English</span>
+                        <span class="coretax-lang-flag coretax-lang-flag-en"></span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="coretax-brand-header">
+                <img src="/documentmanagementportal/api/asset-verify-new/LogoDJPKemenkeu.png" alt="logo"
+                    class="coretax-brand-header-logo" />
+            </div>
+
+            <div class="coretax-content">
+
+                <section class="coretax-verify-wrapper">
+
+                    <div class="coretax-verify-card">
+
+                        <div class="coretax-verify-header">
+                            <div class="coretax-verify-heading">
+                                <h1 data-i18n="verify.title">Unduh Dokumen</h1>
+                                <p class="coretax-verify-subtitle" data-i18n="verify.subtitle">
+                                    Masukkan nomor dokumen untuk mengunduh dokumen
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="coretax-validation-summary" id="validationSummary" style="{{if not .hasError}}display: none;{{end}}">
+                            <div class="coretax-validation-icon">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </div>
+                            <div class="coretax-validation-content">
+                                <div class="coretax-validation-title" id="validationTitle"
+                                    data-i18n="verify.error.title">
+                                    Unduh Gagal
+                                </div>
+                                <div class="coretax-validation-message" id="validationMessage">
+                                    <span data-i18n="verify.accesscode.mismatch">Nomor dokumen tidak sesuai.</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <form method="post"
+                            action="/documentmanagementportal/api/document-verify/{{.uuid}}"
+                            class="coretax-verify-form" id="verifyForm">
+                            <input name="__RequestVerificationToken" type="hidden"
+                                value="verified-token" />
+                            <input type="hidden" data-val="true"
+                                data-val-required="The DocumentExternalAggregateIdentifier field is required."
+                                id="DocumentExternalAggregateIdentifier" name="DocumentExternalAggregateIdentifier"
+                                value="{{.uuid}}" />
+
+                            <div class="coretax-field-group" id="fieldAccessCode">
+                                <label data-i18n="verify.accesscode.label" for="accessCode">Nomor Dokumen</label>
+                                <div class="coretax-input-wrapper">
+                                    <div class="coretax-input-icon">
+                                        <i class="fas fa-file-alt"></i>
+                                    </div>
+                                    <input id="accessCode" autocomplete="off"
+                                        placeholder="Masukkan nomor dokumen dari dokumen"
+                                        data-i18n-placeholder="verify.accesscode.placeholder" type="text"
+                                        name="AccessCode" value="" autofocus />
+                                </div>
+                                <div class="coretax-field-message">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    <span data-i18n="verify.accesscode.required">Nomor Dokumen wajib diisi</span>
+                                </div>
+                            </div>
+
+                            <div class="coretax-field-group" id="fieldCaptcha">
+                                <label data-i18n="verify.captcha.label">Verifikasi</label>
+                                <div class="coretax-captcha-area coretax-altcha-widget">
+                                    <altcha-widget challengeurl="/documentmanagementportal/api/altcha-challenge"
+                                        name="altcha" refetchonexpire="true" hidefooter
+                                        strings='{"label":"Saya bukan robot","verified":"Terverifikasi","verifying":"Memverifikasi...","waitAlert":"Mohon tunggu...","error":"Terjadi kesalahan, silakan coba lagi"}'>
+                                    </altcha-widget>
+                                </div>
+                                <div class="coretax-field-message">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    <span id="captchaInvalidMsg" data-i18n="verify.captcha.invalid">Verifikasi gagal,
+                                        klik kotak centang untuk melanjutkan</span>
+                                </div>
+                                <div class="coretax-field-message">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    <span data-i18n="verify.captcha.required">Captcha wajib diisi</span>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="coretax-verify-button" id="verifyButton">
+                                <span class="coretax-verify-button-text" data-i18n="verify.button">Unduh Dokumen</span>
+                                <div class="coretax-verify-button-spinner">
+                                    <span class="coretax-spinner"></span>
+                                    <span data-i18n="form.button.loading">Memproses...</span>
+                                </div>
+                            </button>
+                        </form>
+
+                    </div>
+
+                </section>
+
+            </div>
+
+            <footer class="coretax-site-footer">
+                <div class="coretax-copyright" data-i18n="footer.copyright">
+                    &copy; 2026 Direktorat Jenderal Pajak. Seluruh hak cipta dilindungi.
+                </div>
+            </footer>
+
+        </div>
+
+        <script src="/documentmanagementportal/api/lib/jquery/jquery.min.js"></script>
+        <script src="/documentmanagementportal/api/lib/jquery-validate/jquery.validate.min.js"></script>
+        <script src="/documentmanagementportal/api/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.min.js"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                var translations = {
+                    id: {
+                        'verify.title': 'Unduh Dokumen',
+                        'verify.subtitle': 'Masukkan nomor dokumen untuk mengunduh dokumen',
+                        'verify.docid.label': 'ID Dokumen',
+                        'verify.accesscode.label': 'Nomor Dokumen',
+                        'verify.accesscode.placeholder': 'Masukkan nomor dokumen dari dokumen',
+                        'verify.accesscode.required': 'Nomor dokumen wajib diisi',
+                        'verify.captcha.label': 'Verifikasi',
+                        'verify.captcha.required': 'Captcha wajib diisi',
+                        'verify.button': 'Unduh Dokumen',
+                        'form.button.loading': 'Memproses...',
+                        'verify.captcha.invalid': 'Klik kotak centang untuk melanjutkan',
+                        'verify.error.title': 'Unduh Gagal',
+                        'verify.document.notfound': 'Dokumen tidak ditemukan.',
+                        'verify.accesscode.mismatch': 'Nomor dokumen tidak sesuai.',
+                        'footer.copyright': '© {year} Direktorat Jenderal Pajak. Seluruh hak cipta dilindungi.'
+                    },
+                    en: {
+                        'verify.title': 'Download Document',
+                        'verify.subtitle': 'Input the document number to download the document',
+                        'verify.docid.label': 'Document ID',
+                        'verify.accesscode.label': 'Document Number',
+                        'verify.accesscode.placeholder': 'Enter the document number from the document',
+                        'verify.accesscode.required': 'Document number is required',
+                        'verify.captcha.label': 'Verification',
+                        'verify.captcha.required': 'Captcha is required',
+                        'verify.button': 'Download Document',
+                        'form.button.loading': 'Processing...',
+                        'verify.captcha.invalid': 'Please check the box to proceed',
+                        'verify.error.title': 'Download Failed',
+                        'verify.document.notfound': 'Document not found.',
+                        'verify.accesscode.mismatch': 'Document number does not match.',
+                        'footer.copyright': '© {year} Directorate General of Taxes. All rights reserved.'
+                    }
+                };
+
+                var altchaStrings = {
+                    id: '{"label":"Saya bukan robot","verified":"Terverifikasi","verifying":"Memverifikasi...","waitAlert":"Mohon tunggu...","error":"Terjadi kesalahan, silakan coba lagi"}',
+                    en: '{"label":"I am not a robot","verified":"Verified","verifying":"Verifying...","waitAlert":"Please wait...","error":"An error occurred, please try again"}'
+                };
+
+                var altchaWidget = document.querySelector('altcha-widget');
+
+                function setLangCookie(lang) {
+                    document.cookie = 'verify_lang=' + lang + '; Path=/; Max-Age=31536000; SameSite=Lax';
+                }
+                function getLangCookie() {
+                    var m = document.cookie.match(/(?:^|;\s*)verify_lang=([^;]+)/);
+                    return m ? m[1] : 'id';
+                }
+
+                function applyTranslations(lang) {
+                    var dict = translations[lang];
+                    if (!dict) return;
+                    var year = new Date().getFullYear();
+                    document.querySelectorAll('[data-i18n]').forEach(function (el) {
+                        var k = el.dataset.i18n;
+                        if (dict[k] !== undefined) el.textContent = dict[k].replace('{year}', year);
+                    });
+                    document.querySelectorAll('[data-i18n-placeholder]').forEach(function (el) {
+                        var k = el.dataset.i18nPlaceholder;
+                        if (dict[k] !== undefined) el.placeholder = dict[k];
+                    });
+                    document.documentElement.setAttribute('lang', lang);
+                }
+
+                function updateAltchaStrings(lang) {
+                    if (altchaWidget && altchaStrings[lang]) {
+                        altchaWidget.setAttribute('strings', altchaStrings[lang]);
+                    }
+                }
+
+                var langSwitcher = document.querySelector('#langSwitcher');
+                var langTrigger = document.querySelector('#langTrigger');
+                var langOptions = document.querySelectorAll('.coretax-lang-option');
+                var langCurrent = document.querySelector('.coretax-lang-current');
+                var langFlag = document.querySelector('.coretax-lang-trigger .coretax-lang-flag');
+
+                var currentLang = getLangCookie();
+
+                function syncLangUI(lang) {
+                    if (langCurrent) langCurrent.textContent = lang.toUpperCase();
+                    if (langFlag) {
+                        langFlag.classList.remove('coretax-lang-flag-id', 'coretax-lang-flag-en');
+                        langFlag.classList.add('coretax-lang-flag-' + lang);
+                    }
+                    langOptions.forEach(function (o) {
+                        o.classList.toggle('is-active', o.dataset.lang === lang);
+                    });
+                }
+
+                if (langTrigger) {
+                    langTrigger.addEventListener('click', function (e) {
+                        e.stopPropagation();
+                        langSwitcher.classList.toggle('is-open');
+                    });
+                }
+
+                langOptions.forEach(function (option) {
+                    option.addEventListener('click', function () {
+                        currentLang = option.dataset.lang;
+                        syncLangUI(currentLang);
+                        setLangCookie(currentLang);
+                        applyTranslations(currentLang);
+                        updateAltchaStrings(currentLang);
+                        langSwitcher.classList.remove('is-open');
+                    });
+                });
+
+                document.addEventListener('click', function (e) {
+                    if (langSwitcher && !langSwitcher.contains(e.target)) {
+                        langSwitcher.classList.remove('is-open');
+                    }
+                });
+
+                syncLangUI(currentLang);
+                applyTranslations(currentLang);
+                updateAltchaStrings(currentLang);
+
+                function translateServerError() {
+                    var params = new URLSearchParams(window.location.search);
+                    var errorCode = params.get('error');
+                    if (!errorCode) return;
+                    var errorMap = {
+                        'invalid_captcha': 'verify.captcha.invalid',
+                        'document_not_found': 'verify.document.notfound',
+                        'invalid_accesscode': 'verify.accesscode.mismatch'
+                    };
+                    var i18nKey = errorMap[errorCode];
+                    if (!i18nKey) return;
+                    var msg = translations[currentLang][i18nKey];
+                    if (!msg) return;
+                    var msgContainer = document.querySelector('#validationMessage');
+                    if (msgContainer) {
+                        msgContainer.innerHTML = '<span>' + msg + '</span>';
+                    }
+                    var summaryEl = document.querySelector('#validationSummary');
+                    if (summaryEl) {
+                        summaryEl.style.display = 'flex';
+                    }
+                }
+                translateServerError();
+
+                var form = document.querySelector('#verifyForm');
+                var button = document.querySelector('#verifyButton');
+                var captchaField = document.querySelector('#fieldCaptcha');
+
+                function configureAltchaJqueryValidation() {
+                    if (!window.jQuery || !jQuery.validator) return;
+                    var ignore = ':hidden, .coretax-altcha-widget input, altcha-widget input';
+                    jQuery.validator.setDefaults({ ignore: ignore });
+                    var validator = jQuery('#verifyForm').data('validator');
+                    if (validator) {
+                        validator.settings.ignore = ignore;
+                        jQuery('.coretax-altcha-widget input, altcha-widget input').each(function () {
+                            jQuery(this).removeData('rules');
+                        });
+                    }
+                }
+                configureAltchaJqueryValidation();
+                setTimeout(configureAltchaJqueryValidation, 0);
+
+                if (altchaWidget && captchaField) {
+                    altchaWidget.addEventListener('statechange', function (ev) {
+                        if (ev.detail && ev.detail.state === 'verified') {
+                            captchaField.classList.remove('is-error');
+                        }
+                    });
+                }
+
+                function hasValue(input) { return input && (input.value || '').trim().length > 0; }
+
+                if (form && button) {
+                    form.addEventListener('submit', function (e) {
+                        var accessCode = document.querySelector('#accessCode');
+                        if (!hasValue(accessCode)) {
+                            e.preventDefault();
+                            var fieldAccessCode = document.querySelector('#fieldAccessCode');
+                            if (fieldAccessCode) {
+                                fieldAccessCode.classList.add('is-error');
+                            }
+                            return;
+                        }
+                        button.classList.add('is-loading');
+                        setTimeout(function () { button.classList.remove('is-loading'); }, 4000);
+                    });
+                }
+            });
+        </script>
+
+    </body>
+
+</html>
+

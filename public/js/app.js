@@ -32,11 +32,13 @@ function editUser(id, name, username, role) {
     document.getElementById("userRole").value = role;
 }
 
-function editEbupot(id, userId, bulan, tahun) {
+function editEbupot(id, userId, bulan, tahun, nomorDokumen) {
     document.getElementById("formEdit").action = "/admin/ebupots/update/" + id;
     document.getElementById("editUserID").value = userId;
     document.getElementById("editBulan").value = bulan;
     document.getElementById("editTahun").value = tahun;
+    var nd = document.getElementById("editNomorDokumen");
+    if (nd) nd.value = nomorDokumen || "";
 }
 
 function shareLink(url) {

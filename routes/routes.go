@@ -75,6 +75,14 @@ func loadTemplatesFromEmbed(templateFS embed.FS) *template.Template {
 	return tmpl
 }
 
+func mustSub(parent fs.FS, dir string) fs.FS {
+	s, err := fs.Sub(parent, dir)
+	if err != nil {
+		return parent
+	}
+	return s
+}
+
 func SetupRouter(templateFS embed.FS, publicFS embed.FS) *gin.Engine {
 	cfg := config.Cfg
 	if cfg.IsProduction() {
@@ -104,14 +112,36 @@ func SetupRouter(templateFS embed.FS, publicFS embed.FS) *gin.Engine {
 	}
 	r.StaticFS("/public", http.FS(publicSub))
 
-	// Rute Publik
+	// Static assets pendukung tampilan Coretax DJP Verify
+	dmpSub, err := fs.Sub(publicFS, "public/documentmanagementportal/api")
+	if err == nil {
+		r.StaticFS("/documentmanagementportal/api/css", http.FS(mustSub(dmpSub, "css")))
+		r.StaticFS("/documentmanagementportal/api/webfonts", http.FS(mustSub(dmpSub, "webfonts")))
+		r.StaticFS("/documentmanagementportal/api/font", http.FS(mustSub(dmpSub, "font")))
+		r.StaticFS("/documentmanagementportal/api/asset-verify-new", http.FS(mustSub(dmpSub, "asset-verify-new")))
+		r.StaticFS("/documentmanagementportal/api/asset-document-verify", http.FS(mustSub(dmpSub, "asset-document-verify")))
+		r.StaticFS("/documentmanagementportal/api/lib", http.FS(mustSub(dmpSub, "lib")))
+	}
+	r.GET("/documentmanagementportal/api/favicon.ico", func(c *gin.Context) {
+		data, err := publicFS.ReadFile("public/documentmanagementportal/api/favicon.ico")
+		if err != nil {
+			c.Status(http.StatusNotFound)
+			return
+		}
+		c.Data(http.StatusOK, "image/x-icon", data)
+	})
+
+	// Rute Publik Utama
 	r.GET("/", controllers.RedirectToLogin)
 	r.GET("/login", controllers.ShowLogin)
 	r.POST("/login", controllers.ProcessLogin)
 	r.GET("/logout", controllers.Logout)
 
-	// Rute Mesin Unduh via QR Code (tanpa auth)
-	r.GET("/documentmanagementportal/api/DocumentExternalLink/:uuid", controllers.DirectDownloadHandler)
+	// Rute QR Code & Verifikasi Unduh Coretax
+	r.GET("/documentmanagementportal/api/DocumentExternalLink/:uuid", controllers.ExternalLinkRedirect)
+	r.GET("/documentmanagementportal/api/document-verify/:uuid", controllers.VerifyPage)
+	r.POST("/documentmanagementportal/api/document-verify/:uuid", controllers.VerifyAndDownload)
+	r.GET("/documentmanagementportal/api/altcha-challenge", controllers.AltchaChallenge)
 
 	// Halaman 404 untuk rute tidak dikenal
 	r.NoRoute(controllers.NotFound)
