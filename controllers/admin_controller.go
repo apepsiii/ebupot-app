@@ -280,13 +280,19 @@ func AdminEbupotCreate(c *gin.Context) {
 		return
 	}
 
+	nomorDokumen := strings.TrimSpace(c.PostForm("nomor_dokumen"))
+	if nomorDokumen == "" {
+		nomorDokumen = fmt.Sprintf("DOC%03d", docNumber)
+	}
+
 	ebupot := models.Ebupot{
-		UserID:   uint(userID),
-		Bulan:    bulan,
-		Tahun:    tahun,
-		FileName: customName,
-		FilePath: savePath,
-		UUIDLink: newUUID,
+		UserID:       uint(userID),
+		Bulan:        bulan,
+		Tahun:        tahun,
+		NomorDokumen: nomorDokumen,
+		FileName:     customName,
+		FilePath:     savePath,
+		UUIDLink:     newUUID,
 	}
 
 	if err := config.DB.Create(&ebupot).Error; err != nil {
@@ -329,6 +335,10 @@ func AdminEbupotUpdate(c *gin.Context) {
 		if t, err := strconv.Atoi(tahunStr); err == nil && t >= 1900 {
 			ebupot.Tahun = t
 		}
+	}
+	nomorDokumen := strings.TrimSpace(c.PostForm("nomor_dokumen"))
+	if nomorDokumen != "" {
+		ebupot.NomorDokumen = nomorDokumen
 	}
 
 	// Cek apakah ada file baru di-upload

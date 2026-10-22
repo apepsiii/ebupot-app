@@ -31,6 +31,13 @@ func ConnectDatabase() {
 		log.Fatal("Gagal migrasi database: ", err)
 	}
 
+	// Isi nomor_dokumen default untuk data lama jika masih kosong
+	var legacyEbupots []models.Ebupot
+	database.Where("nomor_dokumen IS NULL OR nomor_dokumen = ''").Find(&legacyEbupots)
+	for _, eb := range legacyEbupots {
+		database.Model(&models.Ebupot{}).Where("id = ?", eb.ID).Update("nomor_dokumen", "DOC001")
+	}
+
 	DB = database
 	seedAdmin()
 	slog.Info("Database Connected & Migrated!")

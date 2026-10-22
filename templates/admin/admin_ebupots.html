@@ -25,7 +25,8 @@
             <table class="table table-hover align-middle">
                 <thead class="table-light">
                     <tr>
-                        <th width="60">No</th>
+                        <th width="50">No</th>
+                        <th>Nomor Dokumen</th>
                         <th>Bulan</th>
                         <th>Tahun</th>
                         <th>Pemilik</th>
@@ -37,6 +38,7 @@
                     {{range $i, $eb := .ebupots}}
                     <tr>
                         <td>{{add1 $i}}</td>
+                        <td><span class="badge bg-secondary font-monospace">{{if $eb.NomorDokumen}}{{$eb.NomorDokumen}}{{else}}-{{end}}</span></td>
                         <td>{{monthName $eb.Bulan}}</td>
                         <td>{{$eb.Tahun}}</td>
                         <td>{{$eb.User.Name}}</td>
@@ -53,7 +55,7 @@
                                 <i class="bi bi-download"></i>
                             </a>
                             <button class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#modalEdit"
-                                onclick='editEbupot({{$eb.ID}}, {{$eb.UserID}}, {{$eb.Bulan}}, {{$eb.Tahun}})'>
+                                onclick='editEbupot({{$eb.ID}}, {{$eb.UserID}}, {{$eb.Bulan}}, {{$eb.Tahun}}, "{{$eb.NomorDokumen}}")'>
                                 <i class="bi bi-pencil"></i>
                             </button>
                             <form action="/admin/ebupots/delete/{{$eb.ID}}" method="POST" class="d-inline" onsubmit="return confirm('Hapus dokumen ini? File fisik juga akan dihapus.')">
@@ -64,7 +66,7 @@
                         </td>
                     </tr>
                     {{else}}
-                    <tr><td colspan="6" class="text-center text-muted py-4">Belum ada dokumen e-Bupot.</td></tr>
+                    <tr><td colspan="7" class="text-center text-muted py-4">Belum ada dokumen e-Bupot.</td></tr>
                     {{end}}
                 </tbody>
             </table>
@@ -91,6 +93,10 @@
                             {{end}}
                         </select>
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label">Nomor Dokumen <small class="text-muted">(opsional, default: otomatis)</small></label>
+                        <input type="text" name="nomor_dokumen" class="form-control" placeholder="Contoh: DOC001 atau nomor bukti potong">
+                    </div>
                     <div class="row">
                         <div class="col-6 mb-3">
                             <label class="form-label">Bulan</label>
@@ -102,11 +108,11 @@
                         </div>
                         <div class="col-6 mb-3">
                             <label class="form-label">Tahun</label>
-                            <input type="number" name="tahun" class="form-control" value="2026" min="1900" required>
+                            <input type="number" name="tahun" class="form-control" value="2026" required min="1900">
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">File PDF (Maks. 100MB)</label>
+                        <label class="form-label">File PDF Bukti Potong</label>
                         <input type="file" name="file" class="form-control" accept=".pdf,application/pdf" required>
                         <small class="text-muted">Hanya file .pdf yang diizinkan.</small>
                     </div>
@@ -137,6 +143,10 @@
                             <option value="{{.ID}}">{{.Name}} ({{.Username}})</option>
                             {{end}}
                         </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Nomor Dokumen</label>
+                        <input type="text" name="nomor_dokumen" id="editNomorDokumen" class="form-control" placeholder="Nomor Dokumen">
                     </div>
                     <div class="row">
                         <div class="col-6 mb-3">
@@ -176,7 +186,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p class="text-muted small">Bagikan tautan ini ke klien. Penerima dapat langsung mengunduh file PDF tanpa login.</p>
+                <p class="text-muted small">Bagikan tautan ini ke klien. Penerima diarahkan ke halaman verifikasi dokumen sebelum mengunduh.</p>
                 <div class="input-group">
                     <input type="text" id="shareUrlInput" class="form-control" readonly>
                     <button class="btn btn-outline-primary" type="button" id="btnCopyLink" onclick="copyShareLink()">
